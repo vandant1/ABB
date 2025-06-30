@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Materials - ABB Store Management System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-boxes me-2"></i>Materials Management</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if current_user.is_manager() %}
+        <div class="btn-group me-2">
+            <a href="{{ url_for('add_material') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Add Material
+            </a>
+            <a href="{{ url_for('upload_materials') }}" class="btn btn-outline-primary">
+                <i class="fas fa-upload me-1"></i>Bulk Upload
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label for="search" class="form-label">Search Materials</label>
+                <input type="text" class="form-control" id="search" name="search" value="{{ search }}" placeholder="Material number or description">
+            </div>
+            <div class="col-md-3">
+                <label for="category" class="form-label">Category</label>
+                <select class="form-select" id="category" name="category">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {{ 'selected' if cat == category }}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fas fa-search me-1"></i>Search
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <a href="{{ url_for('materials') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Materials Table -->
+<div class="card">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold">Materials List ({{ materials.total }} items)</h6>
+    </div>
+    <div class="card-body">
+        {% if materials.items %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Material Number</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Current Stock</th>
+                        <th>Min Stock</th>
+                        <th>Unit Price</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        {% if current_user.is_manager() %}
+                        <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material in materials.items %}
+                    <tr class="{{ 'table-warning' if material.is_low_stock }}">
+                        <td><strong>{{ material.material_number }}</strong></td>
+                        <td>{{ material.description[:50] }}{% if material.description|length > 50 %}...{% endif %}</td>
+                        <td>{{ material.category or 'N/A' }}</td>
+                        <td>
+                            <span class="{{ 'low-stock' if material.is_low_stock }}">
+                                {{ material.current_stock }} {{ material.unit }}
+                            </span>
+                        </td>
+                        <td>{{ material.minimum_stock }} {{ material.unit }}</td>
+                        <td>₹{{ "{:,.2f}".format(material.unit_price) }}</td>
+                        <td>{{ material.location or 'N/A' }}</td>
+                        <td>
+                            {% if material.is_low_stock %}
+                            <span class="badge bg-warning">Low Stock</span>
+                            {% else %}
+                            <span class="badge bg-success">In Stock</span>
+                            {% endif %}
+                        </td>
+                        {% if current_user.is_manager() %}
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('edit_material', id=material.id) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% if current_user.is_admin() %}
+                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteMaterial({{ material.id }}, '{{ material.material_number }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if materials.pages > 1 %}
+        <nav aria-label="Materials pagination">
+            <ul class="pagination justify-content-center">
+                {% if materials.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('materials', page=materials.prev_num, search=search, category=category) }}">Previous</a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in materials.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != materials.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('materials', page=page_num, search=search, category=category) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if materials.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('materials', page=materials.next_num, search=search, category=category) }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h5>No materials found</h5>
+            <p class="text-muted">Try adjusting your search criteria or add new materials.</p>
+            {% if current_user.is_manager() %}
+            <a href="{{ url_for('add_material') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Add First Material
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function deleteMaterial(id, materialNumber) {
+    if (confirm(`Are you sure you want to delete material "${materialNumber}"? This action cannot be undone.`)) {
+        fetch(`/materials/${id}/delete`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error deleting material');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting material');
+        });
+    }
+}
+</script>
+{% endblock %}

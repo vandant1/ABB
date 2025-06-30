@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - ABB Store Management System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-chart-bar me-2"></i>Reports & Analytics</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-outline-primary" onclick="exportReport()">
+                <i class="fas fa-download me-1"></i>Export Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Materials</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_materials }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Low Stock Items</div>
+                        <div class="h5 mb-0 font-weight-bold {{ 'low-stock' if low_stock_materials|length > 0 else 'text-gray-800' }}">{{ low_stock_materials|length }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x {{ 'text-warning' if low_stock_materials|length > 0 else 'text-gray-300' }}"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Categories</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ category_stats|length }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-tags fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Value</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">₹{{ "{:,.0f}".format(category_stats|sum(attribute='value') or 0)  }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-rupee-sign fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row">
+    <!-- Category Distribution -->
+    <div class="col-xl-6 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold">Stock Value by Category</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Monthly Transactions -->
+    <div class="col-xl-6 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold">Monthly Transaction Trends</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Low Stock Materials -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold">Low Stock Materials</h6>
+                <span class="badge bg-warning">{{ low_stock_materials|length }} items</span>
+            </div>
+            <div class="card-body">
+                {% if low_stock_materials %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Material Number</th>
+                                <th>Description</th>
+                                <th>Category</th>
+                                <th>Current Stock</th>
+                                <th>Minimum Stock</th>
+                                <th>Stock Value</th>
+                                <th>Location</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for material in low_stock_materials %}
+                            <tr>
+                                <td><strong>{{ material.material_number }}</strong></td>
+                                <td>{{ material.description[:50] }}{% if material.description|length > 50 %}...{% endif %}</td>
+                                <td>{{ material.category or 'N/A' }}</td>
+                                <td class="low-stock">{{ material.current_stock }} {{ material.unit }}</td>
+                                <td>{{ material.minimum_stock }} {{ material.unit }}</td>
+                                <td>₹{{ "{:,.2f}".format(material.stock_value) }}</td>
+                                <td>{{ material.location or 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                    <h5>All materials are adequately stocked!</h5>
+                    <p class="text-muted">No materials are currently below minimum stock levels.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Category Statistics -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold">Category-wise Statistics</h6>
+            </div>
+            <div class="card-body">
+                {% if category_stats %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Material Count</th>
+                                <th>Total Stock Value</th>
+                                <th>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set total_value = category_stats|sum(attribute='value') or 1 %}
+                            {% for stat in category_stats %}
+                            <tr>
+                                <td><strong>{{ stat.category or 'Uncategorized' }}</strong></td>
+                                <td>{{ stat.count }}</td>
+                                <td>₹{{ "{:,.2f}".format(stat.value or 0) }}</td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ ((stat.value or 0) / total_value * 100)|round(1) }}%">
+                                            {{ ((stat.value or 0) / total_value * 100)|round(1) }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
+                    <h5>No category data available</h5>
+                    <p class="text-muted">Add materials with categories to see statistics.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Category Chart
+const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+const categoryData = {
+    labels: [
+        {% for stat in category_stats %}
+        '{{ stat.category or "Uncategorized" }}',
+        {% endfor %}
+    ],
+    datasets: [{
+        data: [
+            {% for stat in category_stats %}
+            {{ stat.value or 0 }},
+            {% endfor %}
+        ],
+        backgroundColor: [
+            '#FF6384',
+            '#36A2EB',
+            '#FFCE56',
+            '#4BC0C0',
+            '#9966FF',
+            '#FF9F40',
+            '#FF6384',
+            '#C9CBCF'
+        ]
+    }]
+};
+
+new Chart(categoryCtx, {
+    type: 'doughnut',
+    data: categoryData,
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Monthly Chart
+const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+const monthlyData = {
+    labels: [
+        {% for stat in monthly_stats %}
+        '{{ stat.month }}',
+        {% endfor %}
+    ],
+    datasets: [{
+        label: 'Transaction Value',
+        data: [
+            {% for stat in monthly_stats %}
+            {{ stat.value or 0 }},
+            {% endfor %}
+        ],
+        borderColor: '#FF0000',
+        backgroundColor: 'rgba(255, 0, 0, 0.1)',
+        tension: 0.4
+    }]
+};
+
+new Chart(monthlyCtx, {
+    type: 'line',
+    data: monthlyData,
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₹' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+function exportReport() {
+    alert('Report export functionality would be implemented here');
+}
+</script>
+{% endblock %}

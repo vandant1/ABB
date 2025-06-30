@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Material Requests - ABB Store Management System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-clipboard-list me-2"></i>Material Requests</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('new_request') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>New Request
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="status" class="form-label">Status Filter</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="">All Status</option>
+                    <option value="pending" {{ 'selected' if status_filter == 'pending' }}>Pending</option>
+                    <option value="approved" {{ 'selected' if status_filter == 'approved' }}>Approved</option>
+                    <option value="rejected" {{ 'selected' if status_filter == 'rejected' }}>Rejected</option>
+                    <option value="issued" {{ 'selected' if status_filter == 'issued' }}>Issued</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fas fa-filter me-1"></i>Filter
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <a href="{{ url_for('material_requests') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Requests Table -->
+<div class="card">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold">Requests List ({{ requests.total }} items)</h6>
+    </div>
+    <div class="card-body">
+        {% if requests.items %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Request ID</th>
+                        <th>Material</th>
+                        <th>Requester</th>
+                        <th>Quantity</th>
+                        <th>Purpose</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Request Date</th>
+                        {% if current_user.is_manager() %}
+                        <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for request in requests.items %}
+                    <tr>
+                        <td><strong>#{{ request.id }}</strong></td>
+                        <td>
+                            <strong>{{ request.material.material_number }}</strong><br>
+                            <small class="text-muted">{{ request.material.description[:30] }}...</small>
+                        </td>
+                        <td>
+                            {{ request.requester.username }}<br>
+                            <small class="text-muted">{{ request.requester.department or 'N/A' }}</small>
+                        </td>
+                        <td>
+                            {{ request.quantity_requested }} {{ request.material.unit }}
+                            {% if request.quantity_approved and request.quantity_approved != request.quantity_requested %}
+                            <br><small class="text-success">Approved: {{ request.quantity_approved }} {{ request.material.unit }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ request.purpose }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if request.priority == 'urgent' else 'warning' if request.priority == 'high' else 'info' if request.priority == 'normal' else 'secondary' }}">
+                                {{ request.priority.title() }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'warning' if request.status == 'pending' else 'success' if request.status == 'approved' else 'primary' if request.status == 'issued' else 'danger' }}">
+                                {{ request.status.title() }}
+                            </span>
+                        </td>
+                        <td>{{ request.request_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        {% if current_user.is_manager() %}
+                        <td>
+                            {% if request.status == 'pending' %}
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-success btn-sm" onclick="approveRequest({{ request.id }})">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="rejectRequest({{ request.id }})">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            {% elif request.status == 'approved' %}
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="issueRequest({{ request.id }})">
+                                <i class="fas fa-shipping-fast"></i> Issue
+                            </button>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if requests.pages > 1 %}
+        <nav aria-label="Requests pagination">
+            <ul class="pagination justify-content-center">
+                {% if requests.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('material_requests', page=requests.prev_num, status=status_filter) }}">Previous</a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in requests.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != requests.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('material_requests', page=page_num, status=status_filter) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if requests.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('material_requests', page=requests.next_num, status=status_filter) }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+            <h5>No requests found</h5>
+            <p class="text-muted">No material requests match your criteria.</p>
+            <a href="{{ url_for('new_request') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Create New Request
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Approval Modal -->
+<div class="modal fade" id="approvalModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Approve Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="approvalForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="approved_quantity" class="form-label">Approved Quantity</label>
+                        <input type="number" class="form-control" id="approved_quantity" name="approved_quantity" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="remarks" class="form-label">Remarks (Optional)</label>
+                        <textarea class="form-control" id="remarks" name="remarks" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Approve Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Modal -->
+<div class="modal fade" id="rejectionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rejectionForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="rejection_remarks" class="form-label">Reason for Rejection</label>
+                        <textarea class="form-control" id="rejection_remarks" name="remarks" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function approveRequest(requestId) {
+    document.getElementById('approvalForm').action = `/requests/${requestId}/approve`;
+    new bootstrap.Modal(document.getElementById('approvalModal')).show();
+}
+
+function rejectRequest(requestId) {
+    document.getElementById('rejectionForm').action = `/requests/${requestId}/reject`;
+    new bootstrap.Modal(document.getElementById('rejectionModal')).show();
+}
+
+function issueRequest(requestId) {
+    if (confirm('Are you sure you want to issue this material? This will deduct the quantity from stock.')) {
+        fetch(`/requests/${requestId}/issue`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error issuing material');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error issuing material');
+        });
+    }
+}
+</script>
+{% endblock %}

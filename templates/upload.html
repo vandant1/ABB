@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Upload - ABB Store Management System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-upload me-2"></i>Bulk Material Upload</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('materials') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Materials
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">Upload Excel File</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-4">
+                        {{ form.file.label(class="form-label fw-semibold") }}
+                        {{ form.file(class="form-control" + (" is-invalid" if form.file.errors else "")) }}
+                        {% if form.file.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.file.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Supported formats: .xlsx, .xls (Maximum file size: 16MB)
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i>Important Notes</h6>
+                        <ul class="mb-0">
+                            <li>Existing materials will be updated with new information</li>
+                            <li>New materials will be created automatically</li>
+                            <li>Stock adjustments will be logged as transactions</li>
+                            <li>Please ensure data accuracy before uploading</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('materials') }}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">Excel Format Requirements</h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-table me-2"></i>Required Columns</h6>
+                    <ul class="mb-0 small">
+                        <li><strong>material_number</strong> - Unique identifier</li>
+                        <li><strong>description</strong> - Material description</li>
+                        <li><strong>current_stock</strong> - Current stock quantity</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-secondary">
+                    <h6><i class="fas fa-list me-2"></i>Optional Columns</h6>
+                    <ul class="mb-0 small">
+                        <li>category - Material category</li>
+                        <li>unit - Unit of measurement</li>
+                        <li>minimum_stock - Minimum stock level</li>
+                        <li>unit_price - Price per unit</li>
+                        <li>location - Storage location</li>
+                        <li>supplier - Supplier information</li>
+                    </ul>
+                </div>
+                
+                <div class="d-grid">
+                    <button type="button" class="btn btn-outline-primary" onclick="downloadTemplate()">
+                        <i class="fas fa-download me-1"></i>Download Template
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">Upload Process</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="me-3">
+                        <i class="fas fa-file-excel text-success fa-2x"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1">1. Prepare Excel File</h6>
+                        <small class="text-muted">Format your data according to requirements</small>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-items-center mb-3">
+                    <div class="me-3">
+                        <i class="fas fa-upload text-primary fa-2x"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1">2. Upload File</h6>
+                        <small class="text-muted">Select and upload your Excel file</small>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fas fa-check-circle text-success fa-2x"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1">3. Review Results</h6>
+                        <small class="text-muted">Check the upload summary and any errors</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function downloadTemplate() {
+    // Create a simple CSV template
+    const csvContent = "material_number,description,current_stock,category,unit,minimum_stock,unit_price,location,supplier\n" +
+                      "SAMPLE001,Sample Material Description,100,Electronics,PCS,10,25.50,Rack A1,Sample Supplier\n" +
+                      "SAMPLE002,Another Sample Material,50,Mechanical,KG,5,15.75,Rack B2,Another Supplier";
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'material_upload_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

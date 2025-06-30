@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - ABB Store Management System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-plus me-2"></i>{{ title }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('material_requests') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Requests
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">Request Information</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.material_id.label(class="form-label fw-semibold") }}
+                        {{ form.material_id(class="form-select" + (" is-invalid" if form.material_id.errors else ""), onchange="updateMaterialInfo()") }}
+                        {% if form.material_id.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.material_id.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div id="materialInfo" class="alert alert-info d-none">
+                        <h6><i class="fas fa-info-circle me-2"></i>Material Information</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Current Stock:</strong> <span id="currentStock">-</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Location:</strong> <span id="location">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.quantity_requested.label(class="form-label fw-semibold") }}
+                            {{ form.quantity_requested(class="form-control" + (" is-invalid" if form.quantity_requested.errors else ""), step="0.01") }}
+                            {% if form.quantity_requested.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.quantity_requested.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            {{ form.priority.label(class="form-label fw-semibold") }}
+                            {{ form.priority(class="form-select") }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.purpose.label(class="form-label fw-semibold") }}
+                        {{ form.purpose(class="form-control" + (" is-invalid" if form.purpose.errors else "")) }}
+                        {% if form.purpose.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.purpose.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('material_requests') }}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold">Request Guidelines</h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>How to Request Materials</h6>
+                    <ul class="mb-0 small">
+                        <li>Select the material you need from the dropdown</li>
+                        <li>Enter the exact quantity required</li>
+                        <li>Provide a clear purpose for the request</li>
+                        <li>Set appropriate priority level</li>
+                        <li>Your manager will review and approve the request</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-clock me-2"></i>Processing Time</h6>
+                    <ul class="mb-0 small">
+                        <li><strong>Urgent:</strong> Same day</li>
+                        <li><strong>High:</strong> 1-2 business days</li>
+                        <li><strong>Normal:</strong> 2-3 business days</li>
+                        <li><strong>Low:</strong> 3-5 business days</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateMaterialInfo() {
+    const materialSelect = document.getElementById('material_id');
+    const materialInfo = document.getElementById('materialInfo');
+    const currentStock = document.getElementById('currentStock');
+    const location = document.getElementById('location');
+    
+    if (materialSelect.value) {
+        fetch(`/api/material/${materialSelect.value}`)
+            .then(response => response.json())
+            .then(data => {
+                currentStock.textContent = `${data.current_stock} ${data.unit}`;
+                location.textContent = data.location || 'Not specified';
+                materialInfo.classList.remove('d-none');
+                
+                if (data.is_low_stock) {
+                    materialInfo.classList.remove('alert-info');
+                    materialInfo.classList.add('alert-warning');
+                    materialInfo.innerHTML = materialInfo.innerHTML + '<br><small class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>This material is running low on stock!</small>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                materialInfo.classList.add('d-none');
+            });
+    } else {
+        materialInfo.classList.add('d-none');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions - ABB Store Management System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-exchange-alt me-2"></i>Transaction History</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-outline-primary" onclick="exportTransactions()">
+                <i class="fas fa-download me-1"></i>Export
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label for="type" class="form-label">Transaction Type</label>
+                <select class="form-select" id="type" name="type">
+                    <option value="">All Types</option>
+                    <option value="issue" {{ 'selected' if transaction_type == 'issue' }}>Issue</option>
+                    <option value="receive" {{ 'selected' if transaction_type == 'receive' }}>Receive</option>
+                    <option value="adjust" {{ 'selected' if transaction_type == 'adjust' }}>Adjust</option>
+                    <option value="return" {{ 'selected' if transaction_type == 'return' }}>Return</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fas fa-filter me-1"></i>Filter
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <a href="{{ url_for('transactions') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="card">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold">Transaction History ({{ transactions.total }} records)</h6>
+    </div>
+    <div class="card-body">
+        {% if transactions.items %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Material</th>
+                        <th>Type</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total Value</th>
+                        <th>User</th>
+                        <th>Purpose</th>
+                        <th>Reference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions.items %}
+                    <tr>
+                        <td>{{ transaction.transaction_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <strong>{{ transaction.material.material_number }}</strong><br>
+                            <small class="text-muted">{{ transaction.material.description[:30] }}...</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if transaction.transaction_type == 'receive' else 'danger' if transaction.transaction_type == 'issue' else 'info' if transaction.transaction_type == 'adjust' else 'warning' }}">
+                                {{ transaction.transaction_type.title() }}
+                            </span>
+                        </td>
+                        <td class="{{ 'text-success' if transaction.quantity > 0 else 'text-danger' }}">
+                            {{ '+' if transaction.quantity > 0 else '' }}{{ transaction.quantity }} {{ transaction.material.unit }}
+                        </td>
+                        <td>₹{{ "{:,.2f}".format(transaction.unit_price) }}</td>
+                        <td>₹{{ "{:,.2f}".format(transaction.total_value) }}</td>
+                        <td>{{ transaction.user.username }}</td>
+                        <td>{{ transaction.purpose or 'N/A' }}</td>
+                        <td>{{ transaction.reference_number or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if transactions.pages > 1 %}
+        <nav aria-label="Transactions pagination">
+            <ul class="pagination justify-content-center">
+                {% if transactions.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('transactions', page=transactions.prev_num, type=transaction_type) }}">Previous</a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in transactions.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != transactions.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('transactions', page=page_num, type=transaction_type) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if transactions.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('transactions', page=transactions.next_num, type=transaction_type) }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-exchange-alt fa-3x text-muted mb-3"></i>
+            <h5>No transactions found</h5>
+            <p class="text-muted">No transactions match your criteria.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function exportTransactions() {
+    // This would typically generate and download a CSV/Excel file
+    alert('Export functionality would be implemented here');
+}
+</script>
+{% endblock %}
